@@ -1,0 +1,79 @@
+#Human Activity Recognition Study 
+
+##Synopsis
+The goal of Human Activity Recognition(HAR) is to quantify self movement to find patterns in body behavior, to improve public health as well. The underlying data is from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. Participants were asked to perfrom barbell lifts correctly and incorrectly in 5 different ways.
+
+##1. Getting and Cleaning Data
+###Getting Data
+```{r}
+destTraining <- "./pml-training.csv"
+destTesting <- "./pml-testing.csv"
+datTraining <- read.csv(destTraining)
+datTesting <- read.csv(destTesting)
+```
+
+###Cleaning Data
+```{r}
+dim(datTraining)
+```
+Training data has 19622 observations of 160 variables. By visual check, there are lots of NA columns and empty fields need to be removed. Function nearZeroVar {caret} was used to identify significant variables. All variables with 10% or more percentUnique values were chosen as predictors (column 1 and 3 have no power of predicting). The total number of final predictors is 9. 
+```{r,}
+p <- c(46:48,84:86,122:124,160)
+datTraining <- datTraining[,p]
+datTesting <- datTesting[,p]
+```
+##2. Cross-Validation
+The original training data was divided into new training data and testing data. Due to the limited computing power of my $300 laptop (Inter Celeron CPU @1.5GHZ and 2G RAM), only a small percentage of data were used. 
+
+library(caret)
+
+inTrain <- createDataPartition(y=datTraining$classe, p=0.1,list=FALSE)
+
+training <- datTraining[inTrain,]
+
+testing <- datTraining[-inTrain,]
+
+x <- createDataPartition(y=testing$classe, p=0.1,list=FALSE)
+
+testing <- testing[x,]
+
+##3. Generate Model
+10% and 20% of original training data were tested. 60% were tried and after 4 hours of running without a sign of finish, the process was killed. The model is quite robost and generate the same predicting results on the orignal testing data. When 10% and 20% of original training data applied, the accuray is 81% and 87% respectively. It would be nice to know how accurate the model is under more training data. It's beyond my laptop computing power.  
+
+modFit <- train(classe ~.,data=training,method="rf",prox=TRUE)
+
+pred <- predict(modFit, testing);
+
+testing$predRight <- pred==testing$classe
+
+table(pred,testing$classe)
+
+confusionMatrix(testing$classe, predict(modFit, testing))
+
+###The confusionMatrix result of 10% data
+
+Accuracy : 0.8242 
+
+Class: A Class: B Class: C Class: D Class: E
+                     
+Sensitivity            0.9017   0.8171   0.7698   0.8070   0.7801
+
+Specificity            0.9645   0.9391   0.9610   0.9695   0.9473
+
+
+###The confusionMatrix result of 20% data
+
+Accuracy : 0.893 
+
+Class: A Class: B Class: C Class: D Class: E
+
+Sensitivity            0.9428   0.8940   0.8263   0.8659   0.9102
+
+Specificity            0.9780   0.9625   0.9808   0.9781   0.9675
+
+
+
+##4. Final Result
+Apply the model on 20 testing cases. After the submission session, the model achieved a 90% accuracy (only the 1st and 7th were wrong)
+
+pred <- predict(modFit, datTesting);
